@@ -9,7 +9,7 @@ from telegram.constants import ChatMemberStatus
 # ------------------------ تنظیمات ------------------------
 
 BOT_TOKEN = "8227817016:AAHL4vVYIAOBmBHun6iWhezZdyXSwJBjzY8"
-WEBHOOK_URL = z9gga9vj.up.railway.app
+WEBHOOK_URL = "z9gga9vj.up.railway.app"
 CHANNEL_IDS = ["@fcxter"]  # می‌توان چند کانال داد
 ADMIN_IDS = [6181430071, 5944937406]  # آیدی مدیران
 
@@ -198,4 +198,5 @@ if __name__ == "__main__":
     telegram_app = loop.run_until_complete(init_telegram())
     port = int(os.environ.get("PORT", 5000))
     flask_app.run(host="0.0.0.0", port=port)
+
 
