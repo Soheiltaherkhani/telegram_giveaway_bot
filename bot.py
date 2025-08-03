@@ -6,7 +6,7 @@ from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from telegram.constants import ChatMemberStatus
 
-WEBHOOK_URL = https://03ruc1a2.up.railway.app
+WEBHOOK_URL = z9gga9vj.up.railway.app
 BOT_TOKEN = "8227817016:AAHL4vVYIAOBmBHun6iWhezZdyXSwJBjzY8"
 CHANNEL_IDS = ["@fcxter"]  # می‌توان چند کانال داد
 ADMIN_IDS = [6181430071, 5944937406]  # آیدی چند مدیر
@@ -375,4 +375,5 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
