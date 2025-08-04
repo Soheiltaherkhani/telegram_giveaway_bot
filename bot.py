@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import random
+import asyncio
 from flask import Flask, request
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
@@ -8,9 +9,9 @@ from telegram.constants import ChatMemberStatus
 
 # ========================= تنظیمات =========================
 BOT_TOKEN = "8227817016:AAHL4vVYIAOBmBHun6iWhezZdyXSwJBjzY8"
-WEBHOOK_URL = "https://z9gga9vj.up.railway.app"  # دامنه Railway
-CHANNEL_IDS = ["@fcxter"]  # می‌تونی کانال‌های بیشتری اضافه کنی
-ADMIN_IDS = [6181430071, 5944937406]  # آیدی مدیران
+WEBHOOK_URL = "https://z9gga9vj.up.railway.app"  # آدرس Railway با https
+CHANNEL_IDS = ["@fcxter"]
+ADMIN_IDS = [6181430071, 5944937406]
 
 # ========================= دیتابیس =========================
 conn = sqlite3.connect("raffle.db", check_same_thread=False)
@@ -32,7 +33,6 @@ conn.commit()
 
 # ========================= توابع =========================
 async def is_member(user_id, context: ContextTypes.DEFAULT_TYPE):
-    """بررسی عضویت کاربر در تمام کانال‌ها"""
     for channel in CHANNEL_IDS:
         try:
             member = await context.bot.get_chat_member(channel, user_id)
@@ -65,7 +65,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
     username = user.username or user.first_name
 
-    # بررسی عضویت در کانال
     if not await is_member(user_id, context):
         channels_list = "\n".join([f"🔗 {c}" for c in CHANNEL_IDS])
         await update.message.reply_text(f"🔒 برای استفاده از ربات باید در کانال‌های زیر عضو شوید:\n\n{channels_list}")
@@ -83,8 +82,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     user_id = update.effective_user.id
 
-    # کاربر عادی
-    if not is_admin(user_id):
+    if not is_admin(user_id):  # کاربر عادی
         if text == "🎰 ثبت نام در قرعه کشی":
             cursor.execute("UPDATE users SET is_registered = 1 WHERE user_id = ?", (user_id,))
             cursor.execute("INSERT INTO raffle (user_id) VALUES (?)", (user_id,))
@@ -116,8 +114,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 status = "بله" if registered else "خیر"
                 await update.message.reply_text(f"📊 اطلاعات حساب:\n\nثبت‌نام: {status}\nامتیاز: {points}\nشانس: {chances}")
 
-    # مدیر
-    else:
+    else:  # مدیر
         if text == "🎯 انتخاب برنده":
             cursor.execute("SELECT user_id FROM raffle")
             participants = [row[0] for row in cursor.fetchall()]
@@ -203,10 +200,5 @@ async def init_telegram():
     await telegram_app.bot.set_webhook(url=f"{WEBHOOK_URL}/{BOT_TOKEN}")
 
 if __name__ == "__main__":
-   import asyncio
-
-asyncio.run(init_telegram())  # به جای get_event_loop
-flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-
-
+    asyncio.run(init_telegram())
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
