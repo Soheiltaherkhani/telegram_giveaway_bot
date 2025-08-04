@@ -190,7 +190,7 @@ if __name__ == "__main__":
     while True:
         import time
         time.sleep(1)        [KeyboardButton("🎰 ثبت نام در قرعه کشی")]
-    ], resize_keyboard=True)
+    , resize_keyboard=True)
 
 def admin_menu():
     return ReplyKeyboardMarkup([
@@ -328,6 +328,7 @@ if __name__ == "__main__":
     while True:
         import time
         time.sleep(1)
+
 
 
 
