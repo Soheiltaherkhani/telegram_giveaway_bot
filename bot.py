@@ -1,10 +1,10 @@
 import os
 import sqlite3
 import random
-import threading
 import asyncio
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.constants import ChatMemberStatus
 
 # ========================= تنظیمات =========================
 BOT_TOKEN = "8227817016:AAHL4vVYIAOBmBHun6iWhezZdyXSwJBjzY8"
@@ -37,19 +37,62 @@ def main_menu():
         [KeyboardButton("🎰 ثبت نام در قرعه کشی")]
     ], resize_keyboard=True)
 
+def admin_menu():
+    return ReplyKeyboardMarkup([
+        [KeyboardButton("🎯 انتخاب برنده")],
+        [KeyboardButton("📊 آمار کاربران")]
+    ], resize_keyboard=True)
+
+async def is_member(user_id, context: ContextTypes.DEFAULT_TYPE):
+    """ بررسی عضویت در کانال """
+    try:
+        member = await context.bot.get_chat_member(CHANNEL_ID, user_id)
+        return member.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]
+    except:
+        return False
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
+    # ثبت کاربر در دیتابیس
     cursor.execute("INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)", (user_id, user.username or user.first_name))
     conn.commit()
 
-    await update.message.reply_text("🎉 به ربات قرعه‌کشی خوش آمدید!", reply_markup=main_menu())
+    # بررسی Referral
+    if context.args:
+        try:
+            ref_id = int(context.args[0])
+            if ref_id != user_id:
+                cursor.execute("SELECT user_id FROM users WHERE user_id = ?", (ref_id,))
+                if cursor.fetchone():
+                    cursor.execute("UPDATE users SET points = points + 1 WHERE user_id = ?", (ref_id,))
+                    conn.commit()
+                    try:
+                        await context.bot.send_message(ref_id, "🎉 یک کاربر جدید با لینک شما وارد شد! 1 امتیاز به شما اضافه شد.")
+                    except:
+                        pass
+        except:
+            pass
+
+    # نمایش پنل
+    if user_id in ADMIN_IDS:
+        await update.message.reply_text("👑 به پنل مدیریت خوش آمدید", reply_markup=admin_menu())
+    else:
+        await update.message.reply_text("🎉 به ربات قرعه‌کشی خوش آمدید!", reply_markup=main_menu())
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     user_id = update.effective_user.id
 
+    # اگر کاربر در کانال عضو نباشد
+    if not await is_member(user_id, context):
+        keyboard = [[InlineKeyboardButton("🔗 عضویت در کانال", url=f"https://t.me/{CHANNEL_ID[1:]}")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("🔒 برای استفاده از این قابلیت ابتدا در کانال عضو شوید.", reply_markup=reply_markup)
+        return
+
+    # دستورات کاربران عادی
     if text == "🎰 ثبت نام در قرعه کشی":
         cursor.execute("UPDATE users SET is_registered = 1 WHERE user_id = ?", (user_id,))
         cursor.execute("INSERT INTO raffle (user_id) VALUES (?)", (user_id,))
@@ -62,8 +105,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif text == "💳 تبدیل امتیاز به شانس":
         cursor.execute("SELECT points FROM users WHERE user_id = ?", (user_id,))
-        row = cursor.fetchone()
-        points = row[0] if row else 0
+        points = cursor.fetchone()[0]
         if points > 0:
             cursor.execute("UPDATE users SET points = 0, chances = chances + ? WHERE user_id = ?", (points, user_id))
             for _ in range(points):
@@ -75,15 +117,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif text == "👤 اطلاعات حساب":
         cursor.execute("SELECT points, chances, is_registered FROM users WHERE user_id = ?", (user_id,))
-        row = cursor.fetchone()
-        if row:
-            points, chances, registered = row
-            status = "بله" if registered else "خیر"
-            await update.message.reply_text(f"📊 اطلاعات حساب:\n\nثبت‌نام: {status}\nامتیاز: {points}\nشانس: {chances}")
+        points, chances, registered = cursor.fetchone()
+        status = "بله" if registered else "خیر"
+        await update.message.reply_text(f"📊 اطلاعات حساب:\n\nثبت‌نام: {status}\nامتیاز: {points}\nشانس: {chances}")
+
+    # دستورات ادمین
+    if user_id in ADMIN_IDS:
+        if text == "🎯 انتخاب برنده":
+            cursor.execute("SELECT user_id FROM raffle")
+            participants = [row[0] for row in cursor.fetchall()]
+            if participants:
+                winner = random.choice(participants)
+                cursor.execute("SELECT username FROM users WHERE user_id = ?", (winner,))
+                username = cursor.fetchone()[0]
+                await update.message.reply_text(f"🎉 برنده: @{username} (ID: {winner})")
+            else:
+                await update.message.reply_text("⚠️ هنوز کسی ثبت‌نام نکرده است.")
+
+        elif text == "📊 آمار کاربران":
+            cursor.execute("SELECT COUNT(*) FROM users")
+            total_users = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM raffle")
+            total_raffle = cursor.fetchone()[0]
+            await update.message.reply_text(f"📊 آمار:\nکاربران: {total_users}\nشرکت‌کنندگان قرعه‌کشی: {total_raffle}")
 
 # ========================= اجرای ربات =========================
 def run_bot():
-    asyncio.set_event_loop(asyncio.new_event_loop())  # ساخت حلقه جدید برای thread
+    asyncio.set_event_loop(asyncio.new_event_loop())
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
