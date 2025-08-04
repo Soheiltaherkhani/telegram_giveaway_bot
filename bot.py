@@ -10,7 +10,7 @@ from telegram.constants import ChatMemberStatus
 # ==================== تنظیمات ====================
 BOT_TOKEN = "8227817016:AAHL4vVYIAOBmBHun6iWhezZdyXSwJBjzY8"
 WEBHOOK_URL = "https://0kzbboy4.up.railway.app"
-CHANNEL_ID = "@fcxter"
+CHANNEL_ID = "@fut180"
 ADMIN_IDS = [6181430071, 5944937406]
 
 # ==================== دیتابیس ====================
@@ -191,3 +191,4 @@ if __name__ == "__main__":
     while True:
         import time
         time.sleep(1)
+
