@@ -42,7 +42,7 @@ def admin_menu():
         [KeyboardButton("🎯 انتخاب برنده"), KeyboardButton("👥 انتخاب چند برنده")],
         [KeyboardButton("📢 ارسال پیام به همه"), KeyboardButton("📊 آمار")],
         [KeyboardButton("🔄 ریست قرعه‌کشی")]
-    ], resize_keyboard=True)
+    ], resize_keyboard=True))
 
 # --- بررسی عضویت ---
 async def is_member(user_id, context: ContextTypes.DEFAULT_TYPE):
@@ -328,6 +328,7 @@ if __name__ == "__main__":
     while True:
         import time
         time.sleep(1)
+
 
 
 
