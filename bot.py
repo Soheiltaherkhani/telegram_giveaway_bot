@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, ContextTyp
 from telegram.constants import ChatMemberStatus
 
 # ========================= تنظیمات =========================
-BOT_TOKEN = "8227817016:AAHL4vVYIAOBmBHun6iWhezZdyXSwJBjzY8
+BOT_TOKEN = "8227817016:AAHL4vVYIAOBmBHun6iWhezZdyXSwJBjzY8"
 WEBHOOK_URL = "https://z9gga9vj.up.railway.app"  # دامنه Railway
 CHANNEL_IDS = ["@fcxter"]  # می‌تونی کانال‌های بیشتری اضافه کنی
 ADMIN_IDS = [6181430071, 5944937406]  # آیدی مدیران
@@ -207,4 +207,5 @@ if __name__ == "__main__":
 
 asyncio.run(init_telegram())  # به جای get_event_loop
 flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
