@@ -7,8 +7,8 @@ from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from telegram.constants import ChatMemberStatus
 
-BOT_TOKEN = "توکن_ربات"
-CHANNEL_ID = "@fcxter"
+BOT_TOKEN = "8227817016:AAHL4vVYIAOBmBHun6iWhezZdyXSwJBjzY8"
+CHANNEL_ID = "@fut180"
 
 conn = sqlite3.connect("raffle.db", check_same_thread=False)
 cursor = conn.cursor()
@@ -69,3 +69,4 @@ if __name__ == "__main__":
     print("[DEBUG] ربات در حال راه‌اندازی است...")
     threading.Thread(target=run_bot).start()
     flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
