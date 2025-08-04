@@ -6,7 +6,7 @@ from telegram.constants import ChatMemberStatus
 
 # ==================== تنظیمات اصلی ====================
 BOT_TOKEN = "8227817016:AAHL4vVYIAOBmBHun6iWhezZdyXSwJBjzY8"
-CHANNEL_IDS = ["@fcxter", "@your_second_channel"]  # کانال‌های اجباری
+CHANNEL_IDS = ["@fcxter", "@FCXTERGP"]  # کانال‌های اجباری
 ADMIN_IDS = [6181430071, 5944937406]  # آیدی ادمین‌ها
 
 # ==================== پایگاه داده ====================
@@ -194,3 +194,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
