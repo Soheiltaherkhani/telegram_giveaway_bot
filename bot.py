@@ -203,7 +203,8 @@ async def init_telegram():
     await telegram_app.bot.set_webhook(url=f"{WEBHOOK_URL}/{BOT_TOKEN}")
 
 if __name__ == "__main__":
-    import asyncio
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(init_telegram())
-    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+   import asyncio
+
+asyncio.run(init_telegram())  # به جای get_event_loop
+flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
