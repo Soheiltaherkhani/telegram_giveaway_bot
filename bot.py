@@ -209,3 +209,4 @@ asyncio.run(init_telegram())  # به جای get_event_loop
 flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
 
+
