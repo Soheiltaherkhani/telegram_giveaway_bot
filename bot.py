@@ -9,7 +9,7 @@ from telegram.constants import ChatMemberStatus
 
 # ========================= تنظیمات =========================
 BOT_TOKEN = "8227817016:AAHL4vVYIAOBmBHun6iWhezZdyXSwJBjzY8"
-WEBHOOK_URL = "https://z9gga9vj.up.railway.app"  # آدرس Railway با https
+WEBHOOK_URL = "https://0kzbboy4.up.railway.app"  # آدرس Railway با https
 CHANNEL_IDS = ["@fcxter"]
 ADMIN_IDS = [6181430071, 5944937406]
 
@@ -202,3 +202,4 @@ async def init_telegram():
 if __name__ == "__main__":
     asyncio.run(init_telegram())
     flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
