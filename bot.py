@@ -7,10 +7,10 @@ import asyncio
 BOT_TOKEN = "8227817016:AAHL4vVYIAOBmBHun6iWhezZdyXSwJBjzY8"
 CHANNEL_IDS = ["@fcxter", "@FCXTERGP"]  # کانال‌های اجباری
 ADMIN_IDS = [6181430071, 5944937406]  # آیدی ادمین‌ها
-کانال‌هایی که کاربر باید عضو باشد
+کانال‌هایی که کاربر باید عضو باشدکانال‌هایی که کاربر باید عضو باشد
 
 db = {
-    "users": {},  # user_id: {"points": 0, "chances": 0, "referred_by": None}
+    "users": {},  # user_id: {"points": 0, "chances": 0, "referred_by": None, "joined_raffle": False}
     "waiting_broadcast": False,
     "raffle": [],
 }
@@ -56,7 +56,7 @@ async def start(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
 
     if user_id not in db["users"]:
-        db["users"][user_id] = {"points": 0, "chances": 0, "referred_by": None}
+        db["users"][user_id] = {"points": 0, "chances": 0, "referred_by": None, "joined_raffle": False}
 
     if user_id == ADMIN_ID:
         await update.message.reply_text("به پنل مدیریت خوش آمدید 👑", reply_markup=get_admin_buttons())
@@ -79,13 +79,15 @@ async def handle_buttons(update: Update, context: CallbackContext):
     if user_id == ADMIN_ID:
         if query.data == "stats":
             total_users = len(db["users"])
-            registered = sum(1 for u in db["users"].values() if u["chances"] > 0)
-            await query.edit_message_text(f"📊 آمار:\n\n👥 کاربران: {total_users}\n✅ ثبت‌نام کرده: {registered}", reply_markup=get_admin_buttons())
+            registered = sum(1 for u in db["users"].values() if u["joined_raffle"])
+            await query.edit_message_text(f"📊 آمار:\n\n👥 کاربران: {total_users}\n✅ شرکت‌کنندگان قرعه‌کشی: {registered}", reply_markup=get_admin_buttons())
 
         elif query.data == "pick_winner":
             if db["raffle"]:
-                winner = db["raffle"].pop(0)
-                await query.edit_message_text(f"🎉 برنده: @{winner}", reply_markup=get_admin_buttons())
+                winner_id = db["raffle"].pop(0)
+                db["users"][winner_id]["joined_raffle"] = False  # حذف کاربر از حالت شرکت در قرعه‌کشی
+                db["users"][winner_id]["chances"] = 0
+                await query.edit_message_text(f"🎉 برنده: [{winner_id}](tg://user?id={winner_id})", reply_markup=get_admin_buttons(), parse_mode="Markdown")
             else:
                 await query.edit_message_text("❌ هیچ کاربری در قرعه‌کشی وجود ندارد.", reply_markup=get_admin_buttons())
 
@@ -101,6 +103,7 @@ async def handle_buttons(update: Update, context: CallbackContext):
             db["raffle"].clear()
             for user in db["users"].values():
                 user["chances"] = 0
+                user["joined_raffle"] = False  # ✅ کاربران از حالت شرکت در قرعه‌کشی خارج می‌شوند
             await query.edit_message_text("🔄 قرعه‌کشی و آمار ریست شد.", reply_markup=get_admin_buttons())
 
     # مدیریت پنل کاربر
@@ -109,6 +112,7 @@ async def handle_buttons(update: Update, context: CallbackContext):
             if db["users"][user_id]["points"] >= 10:
                 db["users"][user_id]["points"] -= 10
                 db["users"][user_id]["chances"] += 1
+                db["users"][user_id]["joined_raffle"] = True  # ✅ کاربر در قرعه‌کشی شرکت کرده
                 db["raffle"].append(user_id)
                 await query.edit_message_text("🎟 10 امتیاز به 1 شانس تبدیل شد!", reply_markup=get_user_buttons())
             else:
@@ -116,7 +120,8 @@ async def handle_buttons(update: Update, context: CallbackContext):
 
         elif query.data == "account_info":
             user = db["users"][user_id]
-            await query.edit_message_text(f"ℹ️ اطلاعات حساب:\n\nامتیاز: {user['points']}\nشانس‌ها: {user['chances']}", reply_markup=get_user_buttons())
+            raffle_status = "✅ در قرعه‌کشی شرکت کرده‌اید" if user["joined_raffle"] else "❌ در قرعه‌کشی شرکت نکرده‌اید"
+            await query.edit_message_text(f"ℹ️ اطلاعات حساب:\n\nامتیاز: {user['points']}\nشانس‌ها: {user['chances']}\n{raffle_status}", reply_markup=get_user_buttons())
 
 
 # ------------------ هندل پیام‌ها ------------------
