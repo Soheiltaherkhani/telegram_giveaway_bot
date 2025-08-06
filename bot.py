@@ -95,8 +95,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif text == "📋 لیست کاربران":
             cursor.execute("SELECT user_id, username FROM users")
             users = cursor.fetchall()
-            user_list = "\n".join([f"{u[1] or 'بدون نام'} ({u[0]})" for u in users]) or "هیچ کاربری وجود ندارد."
-            await update.message.reply_text(f"📋 لیست کاربران:\n\n{user_list[:3500]}")
+            if not users:
+                await update.message.reply_text("📋 هیچ کاربری وجود ندارد.")
+            else:
+                user_list = "\n".join(
+                    [f"👤 {u[1] if u[1] else 'بدون نام'} | 🆔 {u[0]}" for u in users]
+                )
+                await update.message.reply_text(f"📋 لیست کاربران:\n\n{user_list[:3500]}")
 
         elif text == "📢 ارسال پیام به همه":
             context.user_data["broadcast"] = True
