@@ -1,11 +1,16 @@
 import sqlite3
 import random
+import requests
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 BOT_TOKEN = "8227817016:AAGwqzCfx6abijss3ksZyju1ifXHLJ1lNCw"
 CHANNEL_IDS = ["@fcxter", "@FCXTERGP"]  # کانال‌های اجباری
 ADMIN_IDS = [6181430071, 5944937406]  # آیدی ادمین‌ها
+
+# حذف وبهوک قبل از اجرای Polling
+delete_webhook_url = f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook"
+requests.get(delete_webhook_url)
 
 # اتصال به دیتابیس
 conn = sqlite3.connect("raffle.db", check_same_thread=False)
@@ -16,7 +21,8 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS users (
     username TEXT,
     points INTEGER DEFAULT 0,
     chances INTEGER DEFAULT 0,
-    is_registered INTEGER DEFAULT 0
+    is_registered INTEGER DEFAULT 0,
+    referrer_id INTEGER
 )""")
 
 cursor.execute("""CREATE TABLE IF NOT EXISTS raffle (
@@ -26,6 +32,7 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS raffle (
 conn.commit()
 
 
+# منوی اصلی کاربر
 def main_menu():
     return ReplyKeyboardMarkup([
         ["💎 افزایش امتیاز", "👤 اطلاعات حساب"],
@@ -34,14 +41,16 @@ def main_menu():
     ], resize_keyboard=True)
 
 
+# منوی مدیریت
 def admin_menu():
     return ReplyKeyboardMarkup([
         ["🎯 انتخاب برنده", "📊 آمار"],
         ["📢 ارسال پیام به همه", "📋 لیست کاربران"],
-        ["🔄 ریست قرعه‌کشی", "🏆 لیدربورد"]
+        ["🏆 لیدربورد", "🔄 ریست قرعه‌کشی"]
     ], resize_keyboard=True)
 
 
+# بررسی عضویت در کانال
 async def is_member(user_id, context: ContextTypes.DEFAULT_TYPE):
     for channel in CHANNEL_IDS:
         try:
@@ -53,10 +62,29 @@ async def is_member(user_id, context: ContextTypes.DEFAULT_TYPE):
     return True
 
 
+# استارت ربات
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    referrer = None
+
+    if context.args:
+        try:
+            referrer = int(context.args[0])
+        except:
+            referrer = None
+
     cursor.execute("INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)",
                    (user.id, user.username or user.first_name))
+
+    if referrer and referrer != user.id:
+        cursor.execute("UPDATE users SET points = points + 1 WHERE user_id = ?", (referrer,))
+        cursor.execute("UPDATE users SET referrer_id = ? WHERE user_id = ?", (referrer, user.id))
+
+        try:
+            await context.bot.send_message(referrer, f"🎉 یک کاربر جدید با لینک شما عضو شد و ۱ امتیاز گرفتید!")
+        except:
+            pass
+
     conn.commit()
 
     if user.id in ADMIN_IDS:
@@ -65,21 +93,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🎉 به ربات قرعه‌کشی خوش آمدید!", reply_markup=main_menu())
 
 
-async def show_leaderboard(update: Update, user_id):
-    cursor.execute("SELECT username, points FROM users ORDER BY points DESC LIMIT 10")
-    top_users = cursor.fetchall()
-    leaderboard = "\n".join([f"{i+1}. @{u[0]} - {u[1]} امتیاز" for i, u in enumerate(top_users)])
-
-    cursor.execute("SELECT COUNT(*) FROM users WHERE points > (SELECT points FROM users WHERE user_id = ?)", (user_id,))
-    rank = cursor.fetchone()[0] + 1
-
-    await update.message.reply_text(f"🏆 لیدربورد:\n\n{leaderboard}\n\n📌 رتبه شما: {rank}")
-
-
+# مدیریت پیام‌ها
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     user_id = update.effective_user.id
 
+    # حالت مدیر
     if user_id in ADMIN_IDS:
         if text == "📊 آمار":
             cursor.execute("SELECT COUNT(*) FROM users")
@@ -107,10 +126,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         elif text == "📢 ارسال پیام به همه":
             context.user_data["broadcast"] = True
-            await update.message.reply_text("📢 پیام خود را ارسال کنید تا به همه کاربران فرستاده شود.")
+            await update.message.reply_text("📢 پیام خود را (متن، عکس یا ویدیو) ارسال کنید.")
 
         elif text == "🏆 لیدربورد":
-            await show_leaderboard(update, user_id)
+            cursor.execute("SELECT username, points FROM users ORDER BY points DESC LIMIT 10")
+            leaderboard = cursor.fetchall()
+            board_text = "🏆 لیدربورد:\n\n" + "\n".join(
+                [f"{i+1}. {u[0]} — {u[1]} امتیاز" for i, u in enumerate(leaderboard)]
+            )
+            await update.message.reply_text(board_text)
 
         elif context.user_data.get("broadcast"):
             cursor.execute("SELECT user_id FROM users")
@@ -120,15 +144,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if update.message.text:
                         await context.bot.send_message(uid, f"📢 پیام مدیر:\n{update.message.text}")
                     elif update.message.photo:
-                        photo_id = update.message.photo[-1].file_id
-                        await context.bot.send_photo(uid, photo_id, caption=update.message.caption or "")
+                        await context.bot.send_photo(uid, update.message.photo[-1].file_id,
+                                                     caption=update.message.caption or "")
                     elif update.message.video:
-                        video_id = update.message.video.file_id
-                        await context.bot.send_video(uid, video_id, caption=update.message.caption or "")
+                        await context.bot.send_video(uid, update.message.video.file_id,
+                                                     caption=update.message.caption or "")
                 except:
                     pass
             context.user_data["broadcast"] = False
             await update.message.reply_text("✅ پیام به همه ارسال شد.")
+
+    # حالت کاربر
     else:
         if not await is_member(user_id, context):
             await update.message.reply_text("🔒 برای استفاده از ربات باید در کانال‌های تعیین شده عضو شوید.")
@@ -165,12 +191,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         elif text == "🏆 لیدربورد":
-            await show_leaderboard(update, user_id)
+            cursor.execute("SELECT username, points FROM users ORDER BY points DESC LIMIT 10")
+            leaderboard = cursor.fetchall()
+            board_text = "🏆 لیدربورد:\n\n" + "\n".join(
+                [f"{i+1}. {u[0]} — {u[1]} امتیاز" for i, u in enumerate(leaderboard)]
+            )
+            await update.message.reply_text(board_text)
 
 
+# مدیریت خطاها
+async def error_handler(update, context):
+    print(f"⚠️ خطا: {context.error}")
+    try:
+        if update and update.effective_message:
+            await update.effective_message.reply_text("⚠️ مشکلی پیش اومد! دوباره امتحان کنید.")
+    except:
+        pass
+
+
+# اجرای ربات
 app = Application.builder().token(BOT_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.ALL, handle_message))
+app.add_error_handler(error_handler)
 
 print("🤖 ربات در حال اجراست...")
 app.run_polling()
