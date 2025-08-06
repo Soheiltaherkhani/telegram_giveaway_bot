@@ -6,8 +6,6 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 BOT_TOKEN = "8227817016:AAHL4vVYIAOBmBHun6iWhezZdyXSwJBjzY8"
 CHANNEL_IDS = ["@fcxter", "@FCXTERGP"]  # کانال‌های اجباری
 ADMIN_IDS = [6181430071, 5944937406]  # آیدی ادمین‌ها
-کانال‌هایی که کاربر باید عضو باشدکانال‌هایی که کاربر باید عضو باشد
-
 
 # اتصال به دیتابیس
 conn = sqlite3.connect("raffle.db", check_same_thread=False)
@@ -31,7 +29,7 @@ conn.commit()
 def main_menu():
     return ReplyKeyboardMarkup([
         ["💎 افزایش امتیاز", "👤 اطلاعات حساب"],
-        ["💳 تبدیل امتیاز به شانس", "🎰 ثبت نام در قرعه کشی"]
+        ["💳 تبدیل امتیاز به شانس", "🎰 ثبت‌نام در قرعه‌کشی"]
     ], resize_keyboard=True)
 
 
@@ -44,7 +42,7 @@ def admin_menu():
 
 
 async def is_member(user_id, context: ContextTypes.DEFAULT_TYPE):
-    for channel in CHANNELS:
+    for channel in CHANNEL_IDS:
         try:
             member = await context.bot.get_chat_member(channel, user_id)
             if member.status not in ["member", "administrator", "creator"]:
@@ -70,6 +68,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     user_id = update.effective_user.id
 
+    # بخش مدیران
     if user_id in ADMIN_IDS:
         if text == "📊 آمار":
             cursor.execute("SELECT COUNT(*) FROM users")
@@ -85,7 +84,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         elif text == "🔄 ریست قرعه‌کشی":
             cursor.execute("DELETE FROM raffle")
-            cursor.execute("UPDATE users SET is_registered = 0, chances = 0")  # فقط وضعیت قرعه‌کشی ریست شود
+            cursor.execute("UPDATE users SET is_registered = 0, chances = 0")
             conn.commit()
             await update.message.reply_text("✅ قرعه‌کشی ریست شد. (کاربران حذف نشدند)")
 
@@ -97,7 +96,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         elif text == "📢 ارسال پیام به همه":
             context.user_data["broadcast"] = True
-            await update.message.reply_text("📢 پیام خود را ارسال کنید تا به همه کاربران فرستاده شود.")
+            await update.message.reply_text("📢 پیام خود را (متن، عکس یا ویدیو) ارسال کنید.")
         elif context.user_data.get("broadcast"):
             cursor.execute("SELECT user_id FROM users")
             users = cursor.fetchall()
@@ -115,40 +114,42 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     pass
             context.user_data["broadcast"] = False
             await update.message.reply_text("✅ پیام به همه ارسال شد.")
-    else:
-        if not await is_member(user_id, context):
-            await update.message.reply_text("🔒 برای استفاده از ربات باید در کانال‌های تعیین شده عضو شوید.")
-            return
+        return
 
-        if text == "🎰 ثبت نام در قرعه کشی":
-            cursor.execute("UPDATE users SET is_registered = 1 WHERE user_id = ?", (user_id,))
-            cursor.execute("INSERT INTO raffle (user_id) VALUES (?)", (user_id,))
+    # بخش کاربران
+    if not await is_member(user_id, context):
+        await update.message.reply_text("🔒 برای استفاده از ربات باید در کانال‌های تعیین شده عضو شوید.")
+        return
+
+    if text == "🎰 ثبت‌نام در قرعه‌کشی":
+        cursor.execute("UPDATE users SET is_registered = 1 WHERE user_id = ?", (user_id,))
+        cursor.execute("INSERT INTO raffle (user_id) VALUES (?)", (user_id,))
+        conn.commit()
+        await update.message.reply_text("✅ شما در قرعه‌کشی ثبت‌نام شدید!")
+
+    elif text == "💎 افزایش امتیاز":
+        link = f"https://t.me/{context.bot.username}?start={user_id}"
+        await update.message.reply_text(f"🔗 لینک دعوت شما:\n{link}")
+
+    elif text == "💳 تبدیل امتیاز به شانس":
+        cursor.execute("SELECT points FROM users WHERE user_id = ?", (user_id,))
+        points = cursor.fetchone()[0]
+        if points > 0:
+            cursor.execute("UPDATE users SET points = 0, chances = chances + ? WHERE user_id = ?", (points, user_id))
+            for _ in range(points):
+                cursor.execute("INSERT INTO raffle (user_id) VALUES (?)", (user_id,))
             conn.commit()
-            await update.message.reply_text("✅ شما در قرعه‌کشی ثبت‌نام شدید!")
+            await update.message.reply_text(f"✅ {points} امتیاز شما به شانس تبدیل شد!")
+        else:
+            await update.message.reply_text("⚠️ شما امتیازی ندارید.")
 
-        elif text == "💎 افزایش امتیاز":
-            link = f"https://t.me/{context.bot.username}?start={user_id}"
-            await update.message.reply_text(f"🔗 لینک دعوت شما:\n{link}")
-
-        elif text == "💳 تبدیل امتیاز به شانس":
-            cursor.execute("SELECT points FROM users WHERE user_id = ?", (user_id,))
-            points = cursor.fetchone()[0]
-            if points > 0:
-                cursor.execute("UPDATE users SET points = 0, chances = chances + ? WHERE user_id = ?", (points, user_id))
-                for _ in range(points):
-                    cursor.execute("INSERT INTO raffle (user_id) VALUES (?)", (user_id,))
-                conn.commit()
-                await update.message.reply_text(f"✅ {points} امتیاز شما به شانس تبدیل شد!")
-            else:
-                await update.message.reply_text("⚠️ شما امتیازی ندارید.")
-
-        elif text == "👤 اطلاعات حساب":
-            cursor.execute("SELECT username, points, chances, is_registered FROM users WHERE user_id = ?", (user_id,))
-            username, points, chances, is_registered = cursor.fetchone()
-            status = "✅ ثبت‌نام شده" if is_registered else "❌ ثبت‌نام نشده"
-            await update.message.reply_text(
-                f"📊 اطلاعات شما:\n\n👤 کاربر: @{username}\n🎯 وضعیت: {status}\n💎 امتیاز: {points}\n🎟️ شانس: {chances}"
-            )
+    elif text == "👤 اطلاعات حساب":
+        cursor.execute("SELECT username, points, chances, is_registered FROM users WHERE user_id = ?", (user_id,))
+        username, points, chances, is_registered = cursor.fetchone()
+        status = "✅ ثبت‌نام شده" if is_registered else "❌ ثبت‌نام نشده"
+        await update.message.reply_text(
+            f"📊 اطلاعات شما:\n\n👤 کاربر: @{username}\n🎯 وضعیت: {status}\n💎 امتیاز: {points}\n🎟️ شانس: {chances}"
+        )
 
 
 app = Application.builder().token(BOT_TOKEN).build()
