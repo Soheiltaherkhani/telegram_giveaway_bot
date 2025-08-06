@@ -145,19 +145,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data["bc"] = False
             await update.message.reply_text(f"✅ به {cnt} ارسال شد.")
 
-        # انتخاب برنده
-        elif text == "🎯 انتخاب برنده":
-            cursor.execute("SELECT user_id FROM raffle")
-            part = [r[0] for r in cursor.fetchall()]
-            if not part:
-                await update.message.reply_text("⚠️ هیچ شرکت‌کننده‌ای نیست!")
-            else:
-                win = random.choice(part)
-                await update.message.reply_text(f"🏆 برنده: {win}")
-                try:
-                    await context.bot.send_message(win, "🎉 تبریک! شما برنده شدید!")
-                except:
-                    await update.message.reply_text("⚠️ نتوانست به برنده پیام دهد.")
+     elif text == "🎯 انتخاب برنده":
+    cursor.execute("SELECT user_id FROM raffle")
+    part = [r[0] for r in cursor.fetchall()]
+    if not part:
+        await update.message.reply_text("⚠️ هیچ شرکت‌کننده‌ای نیست!")
+    else:
+        win_id = random.choice(part)
+        cursor.execute("SELECT username FROM users WHERE user_id = ?", (win_id,))
+        winner = cursor.fetchone()
+        winner_name = f"@{winner[0]}" if winner and winner[0] else f"User {win_id}"
+
+        await update.message.reply_text(f"🏆 برنده: {winner_name}")
+        try:
+            await context.bot.send_message(win_id, "🎉 تبریک! شما برنده شدید!")
+        except:
+            await update.message.reply_text("⚠️ نتوانست به برنده پیام دهد.")
         # لیدربورد
         elif text == "🏆 لیدربورد":
             cursor.execute("SELECT username, points FROM users ORDER BY points DESC LIMIT 10")
@@ -228,3 +231,4 @@ app.add_error_handler(error_handler)
 
 logger.info("ربات در حال اجراست...")
 app.run_polling()
+
