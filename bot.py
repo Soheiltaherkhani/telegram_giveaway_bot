@@ -93,13 +93,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("✅ قرعه‌کشی ریست شد. کاربران حذف نشدند ولی همه وضعیت‌ها صفر شدند.")
 
         elif text == "📋 لیست کاربران":
-            cursor.execute("SELECT user_id, username FROM users")
+            cursor.execute("SELECT username FROM users")
             users = cursor.fetchall()
             if not users:
                 await update.message.reply_text("📋 هیچ کاربری وجود ندارد.")
             else:
                 user_list = "\n".join(
-                    [f"👤 {u[1] if u[1] else 'بدون نام'} | 🆔 {u[0]}" for u in users]
+                    [f"@{u[0]}" if u[0] else "بدون نام" for u in users]
                 )
                 await update.message.reply_text(f"📋 لیست کاربران:\n\n{user_list[:3500]}")
 
