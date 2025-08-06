@@ -1,5 +1,4 @@
 import sqlite3
-import random
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -26,13 +25,15 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS raffle (
 conn.commit()
 
 
+# منوی کاربر
 def main_menu():
     return ReplyKeyboardMarkup([
         ["💎 افزایش امتیاز", "👤 اطلاعات حساب"],
-        ["💳 تبدیل امتیاز به شانس", "🎰 ثبت‌نام در قرعه‌کشی"]
+        ["💳 تبدیل امتیاز به شانس", "🎰 ثبت نام در قرعه‌کشی"]
     ], resize_keyboard=True)
 
 
+# منوی ادمین
 def admin_menu():
     return ReplyKeyboardMarkup([
         ["🎯 انتخاب برنده", "📊 آمار"],
@@ -41,6 +42,7 @@ def admin_menu():
     ], resize_keyboard=True)
 
 
+# چک عضویت در کانال
 async def is_member(user_id, context: ContextTypes.DEFAULT_TYPE):
     for channel in CHANNEL_IDS:
         try:
@@ -52,6 +54,7 @@ async def is_member(user_id, context: ContextTypes.DEFAULT_TYPE):
     return True
 
 
+# استارت ربات
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     cursor.execute("INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)",
@@ -64,11 +67,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🎉 به ربات قرعه‌کشی خوش آمدید!", reply_markup=main_menu())
 
 
+# هندل پیام‌ها
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     user_id = update.effective_user.id
 
-    # بخش مدیران
+    # بخش ادمین
     if user_id in ADMIN_IDS:
         if text == "📊 آمار":
             cursor.execute("SELECT COUNT(*) FROM users")
@@ -84,9 +88,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         elif text == "🔄 ریست قرعه‌کشی":
             cursor.execute("DELETE FROM raffle")
-            cursor.execute("UPDATE users SET is_registered = 0, chances = 0")
+            cursor.execute("UPDATE users SET is_registered = 0, chances = 0")  # فقط وضعیت قرعه‌کشی ریست شود
             conn.commit()
-            await update.message.reply_text("✅ قرعه‌کشی ریست شد. (کاربران حذف نشدند)")
+            await update.message.reply_text("✅ قرعه‌کشی ریست شد. کاربران حذف نشدند و آمار به‌روز شد.")
 
         elif text == "📋 لیست کاربران":
             cursor.execute("SELECT user_id, username FROM users")
@@ -96,7 +100,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         elif text == "📢 ارسال پیام به همه":
             context.user_data["broadcast"] = True
-            await update.message.reply_text("📢 پیام خود را (متن، عکس یا ویدیو) ارسال کنید.")
+            await update.message.reply_text("📢 پیام خود (متن، عکس یا ویدیو) را ارسال کنید.")
         elif context.user_data.get("broadcast"):
             cursor.execute("SELECT user_id FROM users")
             users = cursor.fetchall()
@@ -121,7 +125,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🔒 برای استفاده از ربات باید در کانال‌های تعیین شده عضو شوید.")
         return
 
-    if text == "🎰 ثبت‌نام در قرعه‌کشی":
+    if text == "🎰 ثبت نام در قرعه‌کشی":
         cursor.execute("UPDATE users SET is_registered = 1 WHERE user_id = ?", (user_id,))
         cursor.execute("INSERT INTO raffle (user_id) VALUES (?)", (user_id,))
         conn.commit()
@@ -152,6 +156,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+# اجرای ربات
 app = Application.builder().token(BOT_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.ALL, handle_message))
