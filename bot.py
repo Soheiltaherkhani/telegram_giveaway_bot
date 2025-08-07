@@ -4,7 +4,7 @@ import requests
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-BOT_TOKEN = "8227817016:AAGwqzCfx6abijss3ksZyju1ifXHLJ1lNCw"
+BOT_TOKEN = "8227817016:AAFaI1J3KPn-8WCrXl2MsvPtKTYoDL4TINo"
 
 requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook")
 
@@ -236,3 +236,4 @@ app.add_handler(CommandHandler(\"start\", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 print(\"🤖 Bot is running...\")
 app.run_polling()
+
