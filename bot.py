@@ -122,7 +122,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("🎉 خوش آمدید!", reply_markup=main_menu())
 
-# ————— هندلر پیام‌ها —————
+# ————— هندلر پیام‌های متنی —————
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     text = msg.text or ""
@@ -153,27 +153,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 name = cursor.fetchone()[0] or str(winner)
                 await msg.reply_text(f"🏆 برنده: @{name}")
 
-        # ارسال پیام همگانی (متن/عکس/ویدیو)
+        # شروع حالت ارسال همگانی
         elif text == "📢 ارسال پیام به همه":
             await msg.reply_text("📤 لطفاً پیام خود را (متن/عکس/ویدیو) ارسال کنید.")
             context.user_data["broadcast"] = True
-
-        elif context.user_data.get("broadcast"):
-            users = cursor.execute("SELECT user_id FROM users").fetchall()
-            cnt = 0
-            for (u,) in users:
-                try:
-                    if msg.photo:
-                        await context.bot.send_photo(u, photo=msg.photo[-1].file_id, caption=msg.caption or "")
-                    elif msg.video:
-                        await context.bot.send_video(u, video=msg.video.file_id, caption=msg.caption or "")
-                    else:
-                        await context.bot.send_message(u, msg.text)
-                    cnt += 1
-                except:
-                    pass
-            await msg.reply_text(f"✅ پیام برای {cnt} نفر ارسال شد.")
-            context.user_data["broadcast"] = False
 
         # لیست کاربران
         elif text == "📋 لیست کاربران":
@@ -181,7 +164,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             lines = [f"@{u or 'ناشناس'} ({i})" for u, i in rows]
             await msg.reply_text("👥 لیست کاربران:\n" + "\n".join(lines[:100]))
 
-        # افزودن کانال جوین اجباری
+        # افزودن کانال
         elif text == "➕ افزودن کانال":
             await msg.reply_text("🔗 لطفاً یوزرنیم کانال را با @ ارسال کنید.")
             context.user_data["add_ch"] = True
@@ -199,7 +182,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # لیست کانال‌های جوین اجباری
         elif text == "📋 لیست کانال‌های جوین اجباری":
             chs = [c[0] for c in cursor.execute("SELECT username FROM channels")]
-            await msg.reply_text("📢 کانال‌های اجباری:\n" + "\n".join(chs or ["—"]))
+            await msg.reply_text("📢 کانال‌های اجباری:\n" + ("\n".join(chs) or "—"))
 
         # حذف کانال
         elif text == "❌ حذف کانال جوین اجباری":
@@ -226,17 +209,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # بررسی عضویت
         if not await is_member(uid, context):
             chs = [c[0] for c in cursor.execute("SELECT username FROM channels")]
-            btns = [[InlineKeyboardButton(f"عضویت در {c}", url=f"https://t.me/{c[1:]}")] for c in chs]
+            btns = [
+                [InlineKeyboardButton(f"عضویت در {c}", url=f"https://t.me/{c[1:]}")]
+                for c in chs
+            ]
             await msg.reply_text("🔒 لطفاً عضو شوید:", reply_markup=InlineKeyboardMarkup(btns))
             return
 
         # ثبت‌نام در قرعه‌کشی
         if text == "🎰 ثبت نام در قرعه کشی":
-            reg = cursor.execute("SELECT is_registered FROM users WHERE user_id=?", (uid,)).fetchone()[0]
+            reg = cursor.execute(
+                "SELECT is_registered FROM users WHERE user_id=?", (uid,)
+            ).fetchone()[0]
             if reg:
                 await msg.reply_text("✅ شما از قبل ثبت‌نام کرده‌اید.")
             else:
-                cursor.execute("UPDATE users SET is_registered=1, chances=chances+1 WHERE user_id=?", (uid,))
+                cursor.execute(
+                    "UPDATE users SET is_registered=1, chances=chances+1 WHERE user_id=?",
+                    (uid,),
+                )
                 cursor.execute("INSERT INTO raffle (user_id) VALUES (?)", (uid,))
                 conn.commit()
                 await msg.reply_text("🎉 ثبت‌نام شما انجام شد.")
@@ -248,9 +239,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # تبدیل امتیاز به شانس
         elif text == "💳 تبدیل امتیاز به شانس":
-            pts = cursor.execute("SELECT points FROM users WHERE user_id=?", (uid,)).fetchone()[0]
+            pts = cursor.execute(
+                "SELECT points FROM users WHERE user_id=?", (uid,)
+            ).fetchone()[0]
             if pts > 0:
-                cursor.execute("UPDATE users SET chances=chances+?, points=0 WHERE user_id=?", (pts, uid))
+                cursor.execute(
+                    "UPDATE users SET chances=chances+?, points=0 WHERE user_id=?",
+                    (pts, uid),
+                )
                 for _ in range(pts):
                     cursor.execute("INSERT INTO raffle (user_id) VALUES (?)", (uid,))
                 conn.commit()
@@ -261,17 +257,39 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # اطلاعات حساب
         elif text == "👤 اطلاعات حساب":
             u, pts, chs, reg = cursor.execute(
-                "SELECT username, points, chances, is_registered FROM users WHERE user_id=?", (uid,)
+                "SELECT username, points, chances, is_registered FROM users WHERE user_id=?",
+                (uid,),
             ).fetchone()
             st = "✅ ثبت‌نام شده" if reg else "❌ ثبت‌نام نشده"
             await msg.reply_text(
                 f"👤 @{u}\n💎 امتیاز: {pts}\n🎟 شانس: {chs}\nوضعیت: {st}"
             )
 
+# ————— هندلر ارسال رسانه در حالت همگانی —————
+async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    uid = msg.from_user.id
+
+    if uid in ADMIN_IDS and context.user_data.get("broadcast"):
+        users = cursor.execute("SELECT user_id FROM users").fetchall()
+        cnt = 0
+        for (u,) in users:
+            try:
+                if msg.photo:
+                    await context.bot.send_photo(u, photo=msg.photo[-1].file_id, caption=msg.caption or "")
+                elif msg.video:
+                    await context.bot.send_video(u, video=msg.video.file_id, caption=msg.caption or "")
+                cnt += 1
+            except:
+                pass
+        await msg.reply_text(f"✅ پیام رسانه‌ای برای {cnt} نفر ارسال شد.")
+        context.user_data["broadcast"] = False
+
 # ————— اجرای ربات —————
 app = Application.builder().token(BOT_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO, handle_media))
 
 print("🤖 Bot is running...")
 app.run_polling()
