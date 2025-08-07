@@ -72,6 +72,7 @@ def admin_menu():
             ["📢 ارسال پیام به همه", "📋 لیست کاربران"],
             ["➕ افزودن کانال", "📋 لیست کانال‌های جوین اجباری"],
             ["❌ حذف کانال جوین اجباری", "🔄 ریست قرعه‌کشی"],
+            ["🏆 لیدربورد کاربران"]
         ],
         resize_keyboard=True,
     )
@@ -162,7 +163,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif text == "📋 لیست کاربران":
             rows = cursor.execute("SELECT username, user_id FROM users").fetchall()
             lines = [f"@{u or 'ناشناس'} ({i})" for u, i in rows]
-            await msg.reply_text("👥 لیست کاربران:\n" + "\n".join(lines[:100]))
+            await msg.reply_text("👥 لیست کاربران:
+" + "\n".join(lines[:100]))
 
         # افزودن کانال
         elif text == "➕ افزودن کانال":
@@ -182,7 +184,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # لیست کانال‌های جوین اجباری
         elif text == "📋 لیست کانال‌های جوین اجباری":
             chs = [c[0] for c in cursor.execute("SELECT username FROM channels")]
-            await msg.reply_text("📢 کانال‌های اجباری:\n" + ("\n".join(chs) or "—"))
+            await msg.reply_text("📢 کانال‌های اجباری:
+" + ("\n".join(chs) or "—"))
 
         # حذف کانال
         elif text == "❌ حذف کانال جوین اجباری":
@@ -200,8 +203,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif text == "🔄 ریست قرعه‌کشی":
             cursor.execute("DELETE FROM raffle")
             cursor.execute("UPDATE users SET is_registered=0, chances=0")
-            conn.commit()
+            conn:**commit()**
             await msg.reply_text("♻️ قرعه‌کشی ریست شد.")
+
+        # **لیدر بورد کاربران**
+        elif text == "🏆 لیدربورد کاربران":
+            top = cursor.execute(
+                "SELECT username, chances FROM users ORDER BY chances DESC LIMIT 10"
+            ).fetchall()
+            if top:
+                lines = [f"{i+1}. @{u or 'ناشناس'} - {c} شانس" for i, (u, c) in enumerate(top)]
+                await msg.reply_text("🏆 لیدربورد بر اساس شانس:
+" + "\n".join(lines))
+            else:
+                await msg.reply_text("⚠️ هیچ داده‌ای برای نمایش نیست.")
 
     # === بخش کاربر ===
     else:
@@ -235,7 +250,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # افزایش امتیاز (لینک رفرال)
         elif text == "💎 افزایش امتیاز":
             link = f"https://t.me/{context.bot.username}?start={uid}"
-            await msg.reply_text("🔗 لینک دعوت شما:\n" + link)
+            await msg.reply_text("🔗 لینک دعوت شما:
+" + link)
 
         # تبدیل امتیاز به شانس
         elif text == "💳 تبدیل امتیاز به شانس":
