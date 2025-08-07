@@ -227,7 +227,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif text == "👤 اطلاعات حساب":
             cursor.execute("SELECT username, points, chances, is_registered FROM users WHERE user_id = ?", (user_id,))
             username, points, chances, reg = cursor.fetchone()
-            reg_status = \"✅ ثبت‌نام شده\" if reg else \"❌ ثبت‌نام نشده\"
+            reg_status = "✅ ثبت‌نام شده" if reg else "❌ ثبت‌نام نشده"
             await update.message.reply_text(f\"👤 نام: @{username}\\n💎 امتیاز: {points}\\n🎟️ شانس: {chances}\\nوضعیت: {reg_status}\")
 
 # اجرای ربات
@@ -236,4 +236,5 @@ app.add_handler(CommandHandler(\"start\", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 print(\"🤖 Bot is running...\")
 app.run_polling()
+
 
