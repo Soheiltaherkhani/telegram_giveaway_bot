@@ -163,7 +163,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif text == "📋 لیست کاربران":
             rows = cursor.execute("SELECT username, user_id FROM users").fetchall()
             lines = [f"@{u or 'ناشناس'} ({i})" for u, i in rows]
-            await msg.reply_text("👥 لیست کاربران:" + "\n".join(lines[:100]))
+            await msg.reply_text("👥 لیست کاربران: "  + "\n".join(lines[:100]))
 
         # افزودن کانال
         elif text == "➕ افزودن کانال":
@@ -308,4 +308,5 @@ app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO, handle_media))
 
 print("🤖 Bot is running...")
 app.run_polling()
+
 
