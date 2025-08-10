@@ -16,7 +16,7 @@ from telegram.ext import (
 )
 
 # ————— تنظیمات —————
-BOT_TOKEN = "8227817016:AAFfUpgf2u2xpj2unEtl6h4gEqVGdAxxzm8"
+BOT_TOKEN = ""
 ADMIN_IDS = [6181430071, 5944937406]  # آیدی مدیرها
 
 # حذف وب‌هوک قبلی (در صورت نیاز)
@@ -342,4 +342,5 @@ if __name__ == "__main__":
 
     print("🤖 Bot is running...")
     app.run_polling()
+
 
